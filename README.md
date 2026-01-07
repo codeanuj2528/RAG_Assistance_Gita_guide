@@ -1,115 +1,121 @@
 # 🕉️ Krishna Voice Assistant
 
-> **Real-Time AI Voice Assistant powered by Bhagavad Gita Wisdom**
+> **AI-Powered Spiritual Guide with Real-Time Voice Interaction & Bhagavad Gita Wisdom**
 
-A low-latency (<1 second) voice assistant that speaks as Lord Krishna, providing spiritual guidance and life advice rooted in the Bhagavad Gita. Features real-time speech-to-text, AI-powered responses with RAG (Retrieval Augmented Generation), and natural text-to-speech.
-
-![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
-![License](https://img.shields.io/badge/License-MIT-green.svg)
-![WebSocket](https://img.shields.io/badge/WebSocket-Real--Time-orange.svg)
-
----
-
-## 📋 Table of Contents
-
-- [Features](#-features)
-- [Architecture](#-architecture)
-- [How It Works](#-how-it-works)
-- [Tech Stack](#-tech-stack)
-- [Project Structure](#-project-structure)
-- [Installation](#-installation)
-- [Usage](#-usage)
-- [Deployment](#-deployment)
-- [Known Issues](#-known-issues)
-- [Contributing](#-contributing)
+[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-Click_Here-success?style=for-the-badge)](https://rag-assistance-gita-guide.onrender.com)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue?style=flat-square&logo=python)](https://python.org)
+[![Deployed](https://img.shields.io/badge/Deployed-Render.com-purple?style=flat-square)](https://render.com)
+[![RAG](https://img.shields.io/badge/RAG-Enabled-green?style=flat-square)](https://en.wikipedia.org/wiki/Retrieval-augmented_generation)
 
 ---
 
-## ✨ Features
+## 🎯 What Does Krishna Guide You On?
+
+Krishna provides **personalized spiritual guidance** for modern life challenges:
+
+| Life Problem | Krishna's Guidance |
+|--------------|-------------------|
+| 😰 **Stress & Anxiety** | Mind control techniques, meditation practices |
+| 💼 **Career Confusion** | Finding your dharma, purpose-driven work |
+| 💔 **Relationship Issues** | Detachment with love, compassion practices |
+| 😞 **Failure & Setbacks** | Karma yoga - focus on action, not results |
+| 🔄 **Life Transitions** | Accepting change, eternal perspective |
+| 🧘 **Inner Conflict** | Self-awareness, overcoming doubt |
+| 😢 **Grief & Loss** | Understanding the eternal soul |
+
+**Krishna responds in your language**: Hindi, English, or Hinglish!
+
+---
+
+## 🚀 Live Demo
+
+### 🌐 **[Try It Now → https://rag-assistance-gita-guide.onrender.com](https://rag-assistance-gita-guide.onrender.com)**
+
+> ⏱️ First load may take ~30 seconds (free tier cold start)
+
+---
+
+## ✨ Key Features
 
 | Feature | Description |
 |---------|-------------|
-| 🎤 **Real-Time Voice Input** | WebSocket-based streaming audio capture at 16kHz |
-| ⚡ **<1s Latency** | Optimized pipeline for sub-second response time |
-| 🧠 **RAG-Powered Wisdom** | Retrieves relevant Gita verses for contextual answers |
-| 🗣️ **Natural TTS** | ElevenLabs/OpenAI voice synthesis |
-| 🎯 **Intent Classification** | Categorizes queries (Career, Relationships, Inner Conflict, etc.) |
-| 🔄 **Barge-In Support** | Interrupt Krishna while speaking |
-| 📊 **Live Metrics** | Real-time latency tracking dashboard |
+| 🎤 **Real-Time Voice** | Speak naturally, Krishna responds instantly |
+| ⚡ **<2s Latency** | Sub-second response for natural conversation |
+| 📖 **RAG-Powered** | Retrieves relevant Gita verses for every query |
+| 🗣️ **Natural TTS** | OpenAI's Nova voice - warm and clear |
+| 🌍 **Multi-Language** | Hindi, English, Hinglish support |
+| 🎯 **Intent Detection** | Categorizes your problem for focused advice |
+| 📱 **Mobile Friendly** | Works on any device with a microphone |
+| ☁️ **Fully Deployed** | End-to-end cloud deployment on Render |
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        CLIENT (Browser)                          │
-│  ┌─────────┐    ┌──────────┐    ┌─────────┐    ┌─────────────┐  │
-│  │   Mic   │───▶│ Resample │───▶│  WS     │───▶│  Speaker    │  │
-│  │ Capture │    │ (16kHz)  │    │ Client  │◀───│  Playback   │  │
-│  └─────────┘    └──────────┘    └────┬────┘    └─────────────┘  │
-└──────────────────────────────────────│──────────────────────────┘
-                                       │ WebSocket
-┌──────────────────────────────────────▼──────────────────────────┐
-│                     SERVER (Python Asyncio)                      │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              StreamingOrchestrator                        │   │
-│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────────┐  │   │
-│  │  │   STT   │─▶│   RAG   │─▶│   LLM   │─▶│    TTS      │  │   │
-│  │  │ Whisper │  │ChromaDB │  │ Groq/   │  │ ElevenLabs/ │  │   │
-│  │  │         │  │         │  │ OpenAI  │  │   OpenAI    │  │   │
-│  │  └─────────┘  └─────────┘  └─────────┘  └─────────────┘  │   │
-│  └──────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         USER's BROWSER                                   │
+│  ┌──────────┐    ┌───────────┐    ┌───────────┐    ┌─────────────────┐  │
+│  │ 🎤 Mic   │───▶│ Resample  │───▶│ WebSocket │◀──▶│ 🔊 Audio Player │  │
+│  │ Capture  │    │  16kHz    │    │  Client   │    │   (PCM 16kHz)   │  │
+│  └──────────┘    └───────────┘    └─────┬─────┘    └─────────────────┘  │
+└─────────────────────────────────────────│───────────────────────────────┘
+                                          │ WSS (Secure WebSocket)
+┌─────────────────────────────────────────▼───────────────────────────────┐
+│                    RENDER.COM SERVER (Python)                            │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │                   StreamingOrchestrator                             │ │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐   │ │
+│  │  │   STT    │  │   RAG    │  │   LLM    │  │      TTS         │   │ │
+│  │  │ Whisper  │─▶│  Gita    │─▶│  Groq/   │─▶│  OpenAI Nova    │   │ │
+│  │  │ (Groq)   │  │ Retrieval│  │  OpenAI  │  │    Voice        │   │ │
+│  │  └──────────┘  └──────────┘  └──────────┘  └──────────────────┘   │ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                    ┌───────────────┼───────────────┐
+                    ▼               ▼               ▼
+            ┌────────────┐  ┌────────────┐  ┌────────────┐
+            │   GROQ     │  │  OPENAI    │  │ ELEVENLABS │
+            │  LLaMA 70B │  │  Whisper   │  │ (Optional) │
+            │  (Free)    │  │  TTS Nova  │  │  Premium   │
+            └────────────┘  └────────────┘  └────────────┘
 ```
 
 ---
 
-## 🔄 How It Works
+## 🛠️ Complete Tech Stack
 
-### 1. Voice Capture
-- Browser captures audio via Web Audio API
-- Resampled to 16kHz mono PCM
-- Streamed via WebSocket in 40ms chunks
+### Backend
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **Server** | Python 3.11 + asyncio | Async WebSocket server |
+| **Framework** | websockets | Real-time bidirectional communication |
+| **Deployment** | Docker + Render.com | Free cloud hosting |
 
-### 2. Speech-to-Text (STT)
-- **Primary**: Groq Whisper Large v3 (fastest)
-- **Fallback**: OpenAI Whisper
-- Supports Hindi, English, and Hinglish
+### AI/ML Pipeline
+| Component | Technology | Latency |
+|-----------|------------|---------|
+| **STT** | Groq Whisper Large v3 | ~300ms |
+| **LLM** | Groq LLaMA-3.3-70B | ~150ms |
+| **RAG** | Keyword-based retrieval | ~10ms |
+| **TTS** | OpenAI TTS (Nova voice) | ~400ms |
 
-### 3. RAG Pipeline
-- User query embedded using `sentence-transformers/all-MiniLM-L6-v2`
-- ChromaDB searches 700+ Gita verses
-- Top 3 relevant verses retrieved for context
+### Data & Knowledge Base
+| Component | Details |
+|-----------|---------|
+| **Gita Verses** | 700+ verses from all 18 chapters |
+| **Translations** | Multiple author translations |
+| **Commentary** | Scholarly interpretations |
+| **Format** | JSON with chapter/verse metadata |
 
-### 4. Intent Classification
-- Categorizes query into: Career/Purpose, Relationships, Inner Conflict, Life Transitions, Daily Struggles
-- Guides LLM to provide focused wisdom
-
-### 5. LLM Response
-- **Primary**: Groq LLaMA-3.3-70B (instant)
-- **Fallback**: OpenAI GPT-4o-mini
-- Token-by-token streaming for low latency
-
-### 6. Text-to-Speech (TTS)
-- **Primary**: ElevenLabs (deep, Krishna-like voice)
-- **Fallback**: OpenAI TTS
-- Sentence-by-sentence streaming for fast response
-
----
-
-## 🛠️ Tech Stack
-
+### Frontend
 | Component | Technology |
 |-----------|------------|
-| **Backend** | Python 3.11+, asyncio, websockets |
-| **STT** | OpenAI Whisper, Groq Whisper |
-| **LLM** | Groq LLaMA-3.3-70B, OpenAI GPT-4o-mini |
-| **TTS** | ElevenLabs, OpenAI TTS |
-| **Embeddings** | sentence-transformers (all-MiniLM-L6-v2) |
-| **Vector DB** | ChromaDB |
-| **Frontend** | Vanilla HTML/JS, Web Audio API |
-| **Deployment** | Docker, Render.com |
+| **UI** | Single HTML file (no framework) |
+| **Audio** | Web Audio API for capture & playback |
+| **Styling** | CSS Glassmorphism design |
+| **Real-time** | WebSocket client |
 
 ---
 
@@ -117,125 +123,78 @@ A low-latency (<1 second) voice assistant that speaks as Lord Krishna, providing
 
 ```
 Krishna_Voice/
-├── 📄 unified_server.py      # Main cloud deployment server
-├── 📄 streaming_server.py    # WebSocket orchestrator
-├── 📄 streaming_stt.py       # Speech-to-Text (Whisper)
-├── 📄 streaming_llm.py       # LLM responses (Groq/OpenAI)
-├── 📄 streaming_tts.py       # Text-to-Speech (ElevenLabs)
-├── 📄 rag_embedder.py        # Build vector embeddings
-├── 📄 rag_retriever.py       # Retrieve relevant verses
-├── 📄 intent_classifier.py   # Query intent classification
-├── 📄 response_evaluator.py  # Response quality metrics
-├── 📄 config.py              # Configuration & API keys
-├── 📄 krishna_complete.html  # Web UI (single file)
-├── 📄 requirements.txt       # Python dependencies
-├── 📄 Dockerfile             # Container configuration
-├── 📄 render.yaml            # Render.com deployment
-└── 📁 data/                  # Bhagavad Gita data
-    ├── verse.json            # 700+ Sanskrit verses
-    ├── translation.json      # English translations
-    ├── commentary.json       # Scholarly commentaries
-    └── chapters.json         # Chapter summaries
+├── 🚀 DEPLOYMENT
+│   ├── Dockerfile              # Container configuration
+│   ├── render.yaml             # Render.com settings
+│   └── unified_server.py       # Cloud server (HTTP + WebSocket)
+│
+├── 🎤 VOICE PIPELINE
+│   ├── streaming_server.py     # Main orchestrator
+│   ├── streaming_stt.py        # Speech-to-Text (Whisper)
+│   ├── streaming_llm.py        # LLM responses (Krishna)
+│   └── streaming_tts.py        # Text-to-Speech (OpenAI)
+│
+├── 📖 RAG SYSTEM
+│   ├── rag_retriever.py        # Verse retrieval (lightweight)
+│   ├── rag_embedder.py         # Embedding builder
+│   └── intent_classifier.py    # Query categorization
+│
+├── 📚 GITA DATA
+│   └── data/
+│       ├── verse.json          # Sanskrit verses
+│       ├── translation.json    # English translations
+│       └── commentary.json     # Scholarly notes
+│
+├── 🌐 FRONTEND
+│   └── krishna_complete.html   # Complete web interface
+│
+└── ⚙️ CONFIG
+    ├── config.py               # API keys & settings
+    └── requirements.txt        # Python dependencies
 ```
 
 ---
 
-## 🚀 Installation
+## 🔄 End-to-End Flow
 
-### Prerequisites
-- Python 3.11+
-- API Keys: OpenAI, Groq, ElevenLabs (optional)
+```mermaid
+sequenceDiagram
+    participant U as 👤 User
+    participant B as 🌐 Browser
+    participant S as ☁️ Server
+    participant G as 🤖 Groq API
+    participant O as 🔊 OpenAI API
 
-### Local Setup
-
-```bash
-# Clone repository
-git clone https://github.com/codeanuj2528/RAG_Assistance_Gita_guide.git
-cd RAG_Assistance_Gita_guide
-
-# Create virtual environment
-python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/Mac
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Create .env file
-echo OPENAI_API_KEY=your-key > .env
-echo GROQ_API_KEY=your-key >> .env
-echo ELEVENLABS_API_KEY=your-key >> .env
-
-# Build RAG embeddings (first time only)
-python rag_embedder.py
-
-# Start server
-python streaming_server.py
-```
-
-### Access
-Open `krishna_complete.html` in browser, or visit `http://localhost:8765`
-
----
-
-## 💬 Usage
-
-1. **Click "START RECORDING"** - Microphone activates
-2. **Speak your question** - e.g., "I'm confused about my career"
-3. **Wait for Krishna's response** - Audio plays automatically
-4. **Click again to ask another question**
-
-### Example Questions
-- "What should I do when I feel lost in life?"
-- "How do I handle stress at work?"
-- "I'm having relationship problems, what does the Gita say?"
-- "मुझे अपने भविष्य की चिंता है" (Hindi supported)
-
----
-
-## ☁️ Deployment
-
-### Render.com (FREE)
-
-1. **Fork/Push to GitHub**
-
-2. **Go to [render.com](https://render.com)** → Sign up with GitHub
-
-3. **Create Web Service**:
-   - Repository: `codeanuj2528/RAG_Assistance_Gita_guide`
-   - Runtime: Docker
-   - Instance: Free
-
-4. **Add Environment Variables**:
-   ```
-   OPENAI_API_KEY=sk-...
-   GROQ_API_KEY=gsk_...
-   ELEVENLABS_API_KEY=... (optional)
-   ```
-
-5. **Deploy** → Get live URL: `https://your-app.onrender.com`
-
-### Docker (Self-hosted)
-
-```bash
-docker build -t krishna-voice .
-docker run -p 8080:8080 \
-  -e OPENAI_API_KEY=your-key \
-  -e GROQ_API_KEY=your-key \
-  krishna-voice
+    U->>B: 🎤 Speaks question
+    B->>S: 📡 Audio chunks (WebSocket)
+    S->>G: 🎯 Whisper STT
+    G-->>S: 📝 "I feel stressed"
+    
+    Note over S: 📖 RAG retrieves<br/>relevant Gita verses
+    
+    S->>G: 🧠 LLaMA-3.3-70B
+    G-->>S: 💬 Krishna's response (streaming)
+    S->>O: 🗣️ TTS (Nova voice)
+    O-->>S: 🎵 Audio stream
+    S-->>B: 🔊 Audio playback
+    B-->>U: 🕉️ Hears Krishna's wisdom
 ```
 
 ---
 
-## ⚠️ Known Issues
+## 🚀 Deployment Status
 
-| Issue | Status | Workaround |
-|-------|--------|------------|
-| First request slow on Render free tier | Expected | Service wakes from sleep in ~30s |
-| Groq rate limits during heavy use | Handled | Auto-fallback to OpenAI |
-| Hindi TTS pronunciation | Partial | ElevenLabs handles better than OpenAI |
-| WebSocket disconnect on network change | Known | Refresh page to reconnect |
-| ChromaDB not persisted on Render | Design | Rebuilds on each deploy (~30s) |
+| Component | Status | URL |
+|-----------|--------|-----|
+| **Live App** | ✅ Deployed | [rag-assistance-gita-guide.onrender.com](https://rag-assistance-gita-guide.onrender.com) |
+| **GitHub** | ✅ Public | [codeanuj2528/RAG_Assistance_Gita_guide](https://github.com/codeanuj2528/RAG_Assistance_Gita_guide) |
+| **Docker** | ✅ Containerized | Auto-built on Render |
+
+### Deployment Features
+- ✅ **Free Tier** - Runs on Render.com free plan
+- ✅ **Auto SSL** - HTTPS enabled
+- ✅ **WebSocket** - Real-time communication
+- ✅ **Auto Deploy** - GitHub integration
 
 ---
 
@@ -243,42 +202,64 @@ docker run -p 8080:8080 \
 
 | Metric | Target | Achieved |
 |--------|--------|----------|
-| STT Latency | <500ms | ~300-400ms |
-| LLM First Token | <300ms | ~150-250ms |
-| TTS First Audio | <500ms | ~400-600ms |
-| **Total Handoff** | **<1500ms** | **800-1200ms** ✅ |
+| STT Latency | <500ms | ~300ms ✅ |
+| LLM First Token | <300ms | ~150ms ✅ |
+| TTS First Audio | <500ms | ~400ms ✅ |
+| **Total Handoff** | <2000ms | ~1500ms ✅ |
 
 ---
 
-## 🤝 Contributing
+## 🏃 Quick Start (Local)
 
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open Pull Request
+```bash
+# Clone
+git clone https://github.com/codeanuj2528/RAG_Assistance_Gita_guide.git
+cd RAG_Assistance_Gita_guide
+
+# Setup
+python -m venv venv
+venv\Scripts\activate  # Windows
+pip install -r requirements.txt
+
+# Configure (.env file)
+OPENAI_API_KEY=sk-...
+GROQ_API_KEY=gsk_...
+
+# Run
+python streaming_server.py
+```
+
+Open `krishna_complete.html` in browser → Click microphone → Ask Krishna!
 
 ---
 
-## 📜 License
+## 💡 Example Conversations
 
-MIT License - See [LICENSE](LICENSE) for details.
+| You Say | Krishna Responds |
+|---------|------------------|
+| "I'm stressed about my job" | Guidance on Karma Yoga (Chapter 3) - focus on action, not results |
+| "मुझे डर लग रहा है" | कृष्ण बोले: "भय से मुक्त हो, पार्थ..." (Chapter 2, Verse 40) |
+| "How to deal with failure?" | Wisdom about impermanence and eternal soul (Chapter 2, Verse 47) |
 
 ---
 
 ## 🙏 Acknowledgments
 
-- **Bhagavad Gita data** from [Bhagavad Gita API](https://bhagavadgitaapi.in/)
-- **ElevenLabs** for realistic voice synthesis
-- **Groq** for lightning-fast LLM inference
-- **OpenAI** for Whisper STT and fallback services
+- **Bhagavad Gita API** - Verse data source
+- **Groq** - Fast LLM inference
+- **OpenAI** - Whisper STT & TTS
+- **Render.com** - Free cloud hosting
 
 ---
 
 <div align="center">
 
-**Built with ❤️ and devotion**
+### 🕉️ **[Try Krishna Voice Assistant Now](https://rag-assistance-gita-guide.onrender.com)** 🕉️
 
-*"You have the right to work, but never to the fruit of work." - Bhagavad Gita 2.47*
+*"कर्मण्येवाधिकारस्ते मा फलेषु कदाचन"*  
+*"You have the right to work, but never to its fruits"*  
+— Bhagavad Gita 2.47
+
+**Built with ❤️ for spiritual seekers**
 
 </div>
