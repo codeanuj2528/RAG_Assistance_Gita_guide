@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Microphone Diagnostic Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 30px;
+            background: #1a1a2e;
+            color: #fff;
+        }
+
+        h1 {
+            color: #4caf50;
+        }
+
+        button {
+            padding: 15px 30px;
+            margin: 10px 5px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+        }
+
+        .btn-start {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-stop {
+            background: #f44336;
+            color: white;
+        }
+
+        select {
+            padding: 10px;
+            margin: 10px 0;
+            width: 100%;
+            max-width: 500px;
+            font-size: 14px;
+        }
+
+        #log {
+            background: #000;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .ok {
+            color: #4caf50;
+        }
+
+        .err {
+            color: #f44336;
+        }
+
+        .warn {
+            color: #ff9800;
+        }
+
+        .info {
+            color: #2196f3;
+        }
+
+        #waveform {
+            width: 100%;
+            height: 100px;
+            background: #222;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        #rmsBar {
+            height: 30px;
+            background: linear-gradient(90deg, #4caf50, #ff9800, #f44336);
+            border-radius: 5px;
+            width: 0%;
+            transition: width 0.1s;
+        }
+
+        #rmsContainer {
+            background: #333;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        #rmsValue {
+            text-align: center;
+            font-size: 24px;
+            color: #4caf50;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🎤 Microphone Diagnostic Test</h1>
+    <p>This tool will help diagnose why audio is not being captured.</p>
+
+    <h3>Step 1: Select Microphone Device</h3>
+    <select id="deviceSelect">
+        <option value="">Loading devices...</option>
+    </select>
+    <button onclick="refreshDevices()">🔄 Refresh</button>
+
+    <h3>Step 2: Test Microphone</h3>
+    <button class="btn-start" onclick="startTest()">▶️ Start Test</button>
+    <button class="btn-stop" onclick="stopTest()">⏹️ Stop Test</button>
+
+    <h3>Audio Level (RMS):</h3>
+    <div id="rmsValue">-</div>
+    <div id="rmsContainer">
+        <div id="rmsBar"></div>
+    </div>
+
+    <canvas id="waveform"></canvas>
+
+    <h3>Debug Log:</h3>
+    <div id="log"></div>
+
+    <script>
+        let audioCtx = null;
+        let mediaStream = null;
+        let processor = null;
+        let analyser = null;
+        let source = null;
+        let isRunning = false;
+        let maxRMS = 0;
+
+        const logEl = document.getElementById('log');
+        const deviceSelect = document.getElementById('deviceSelect');
+        const rmsValueEl = document.getElementById('rmsValue');
+        const rmsBar = document.getElementById('rmsBar');
+        const canvas = document.getElementById('waveform');
+        const canvasCtx = canvas.getContext('2d');
+
+        function log(msg, type = '') {
+            const time = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${time}] ${msg}`;
+            logEl.appendChild(div);
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(msg);
+        }
+
+        async function refreshDevices() {
+            log('Enumerating audio devices...', 'info');
+
+            try {
+                // Need to request permission first to get device labels
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const audioInputs = devices.filter(d => d.kind === 'audioinput');
+
+                deviceSelect.innerHTML = '';
+
+                if (audioInputs.length === 0) {
+                    deviceSelect.innerHTML = '<option value="">No audio devices found!</option>';
+                    log('ERROR: No audio input devices found!', 'err');
+                    return;
+                }
+
+                audioInputs.forEach((device, i) => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.textContent = device.label || `Microphone ${i + 1}`;
+                    deviceSelect.appendChild(option);
+                    log(`Found device: ${device.label || device.deviceId}`, 'ok');
+                });
+
+                log(`Found ${audioInputs.length} audio input device(s)`, 'ok');
+
+            } catch (e) {
+                log('Error enumerating devices: ' + e.message, 'err');
+            }
+        }
+
+        async function startTest() {
+            if (isRunning) {
+                log('Already running!', 'warn');
+                return;
+            }
+
+            log('='.repeat(50), 'info');
+            log('STARTING MICROPHONE TEST', 'info');
+            log('='.repeat(50), 'info');
+            maxRMS = 0;
+
+            const selectedDevice = deviceSelect.value;
+            log(`Selected device ID: ${selectedDevice || 'default'}`, 'info');
+
+            try {
+                // Build constraints
+                const constraints = {
+                    audio: {
+                        deviceId: selectedDevice ? { exact: selectedDevice } : undefined,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                };
+
+                log('Requesting microphone access...', 'info');
+                log(`Constraints: ${JSON.stringify(constraints.audio)}`, 'info');
+
+                mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+                const track = mediaStream.getAudioTracks()[0];
+                log(`✅ Got audio track: ${track.label}`, 'ok');
+                log(`Track settings: ${JSON.stringify(track.getSettings())}`, 'info');
+
+                // Create AudioContext
+                audioCtx = new AudioContext();
+                log(`AudioContext state: ${audioCtx.state}`, 'info');
+                log(`AudioContext sample rate: ${audioCtx.sampleRate}Hz`, 'info');
+
+                if (audioCtx.state === 'suspended') {
+                    await audioCtx.resume();
+                    log('AudioContext resumed', 'info');
+                }
+
+                // Create nodes
+                source = audioCtx.createMediaStreamSource(mediaStream);
+                log('MediaStreamSource created', 'info');
+
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 2048;
+                source.connect(analyser);
+                log('Analyser connected', 'info');
+
+                processor = audioCtx.createScriptProcessor(4096, 1, 1);
+                source.connect(processor);
+                processor.connect(audioCtx.destination);
+                log('ScriptProcessor connected', 'info');
+
+                processor.onaudioprocess = function (e) {
+                    if (!isRunning) return;
+
+                    const input = e.inputBuffer.getChannelData(0);
+
+                    // Calculate RMS
+                    let sumSq = 0;
+                    let maxSample = 0;
+                    for (let i = 0; i < input.length; i++) {
+                        sumSq += input[i] * input[i];
+                        maxSample = Math.max(maxSample, Math.abs(input[i]));
+                    }
+                    const rms = Math.sqrt(sumSq / input.length);
+
+                    if (rms > maxRMS) maxRMS = rms;
+
+                    // Update UI
+                    rmsValueEl.textContent = `RMS: ${rms.toFixed(6)} | Max: ${maxRMS.toFixed(6)} | Peak: ${maxSample.toFixed(6)}`;
+                    rmsBar.style.width = Math.min(rms * 1000, 100) + '%';
+
+                    // Color based on level
+                    if (rms > 0.01) {
+                        rmsValueEl.style.color = '#4caf50';
+                    } else if (rms > 0.001) {
+                        rmsValueEl.style.color = '#ff9800';
+                    } else if (rms > 0) {
+                        rmsValueEl.style.color = '#f44336';
+                    } else {
+                        rmsValueEl.style.color = '#888';
+                    }
+                };
+
+                // Draw waveform
+                drawWaveform();
+
+                isRunning = true;
+                log('🎤 RECORDING STARTED - Speak now!', 'ok');
+                log('Watch the RMS values above. If speaking, they should be > 0.01', 'info');
+
+            } catch (e) {
+                log('❌ ERROR: ' + e.message, 'err');
+                log('Stack: ' + e.stack, 'err');
+            }
+        }
+
+        function drawWaveform() {
+            if (!analyser || !isRunning) return;
+
+            requestAnimationFrame(drawWaveform);
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteTimeDomainData(dataArray);
+
+            canvas.width = canvas.offsetWidth;
+            canvas.height = 100;
+
+            canvasCtx.fillStyle = '#222';
+            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+            canvasCtx.lineWidth = 2;
+            canvasCtx.strokeStyle = '#4caf50';
+            canvasCtx.beginPath();
+
+            const sliceWidth = canvas.width / bufferLength;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = v * canvas.height / 2;
+
+                if (i === 0) {
+                    canvasCtx.moveTo(x, y);
+                } else {
+                    canvasCtx.lineTo(x, y);
+                }
+                x += sliceWidth;
+            }
+
+            canvasCtx.lineTo(canvas.width, canvas.height / 2);
+            canvasCtx.stroke();
+        }
+
+        function stopTest() {
+            if (!isRunning) return;
+
+            isRunning = false;
+
+            if (processor) processor.disconnect();
+            if (analyser) analyser.disconnect();
+            if (source) source.disconnect();
+            if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+            if (audioCtx) audioCtx.close();
+
+            processor = null;
+            analyser = null;
+            source = null;
+            mediaStream = null;
+            audioCtx = null;
+
+            log('Stopped', 'warn');
+            log(`Maximum RMS recorded: ${maxRMS.toFixed(6)}`, 'info');
+
+            if (maxRMS === 0) {
+                log('⚠️ RMS was always ZERO! Your microphone is not capturing audio.', 'err');
+                log('Try selecting a different device from the dropdown above.', 'err');
+            } else if (maxRMS < 0.001) {
+                log('⚠️ RMS was very low. Microphone volume might be too quiet.', 'warn');
+            } else {
+                log('✅ Microphone is working! RMS values are good.', 'ok');
+            }
+        }
+
+        // Init
+        window.onload = () => {
+            log('Microphone Diagnostic Tool loaded', 'info');
+            log('Click "Start Test" to begin', 'info');
+            refreshDevices();
+        };
+    </script>
+</body>
+
+</html>

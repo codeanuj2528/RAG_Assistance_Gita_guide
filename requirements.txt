@@ -1,0 +1,30 @@
+# Core dependencies
+python-dotenv==1.0.0
+
+# OpenAI SDK (for Whisper STT and TTS)
+openai==1.59.5
+
+# Groq SDK (for fast LLM inference)
+groq==0.13.1
+
+# ElevenLabs SDK (optional, for premium TTS)
+elevenlabs==2.27.0
+
+# Audio processing
+pydub==0.25.1
+numpy>=2.1.0
+scipy>=1.14.0
+
+# HTTP client for TTS streaming
+httpx>=0.27.0
+
+# WebSocket server for real-time streaming
+websockets>=13.1
+
+# Utility
+requests==2.32.3
+
+# RAG Pipeline - Open Source Embeddings (Fast & Free)
+chromadb>=0.4.22
+sentence-transformers>=2.3.1
+

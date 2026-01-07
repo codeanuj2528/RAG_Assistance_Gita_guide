@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Krishna Voice - Complete Working Version</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(15px);
+            padding: 35px;
+            border-radius: 25px;
+            max-width: 600px;
+            width: 95%;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.2em;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            text-align: center;
+            opacity: 0.7;
+            margin-bottom: 25px;
+            font-size: 0.9em;
+        }
+
+        #status {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        #status.listening {
+            background: rgba(33, 150, 243, 0.25);
+            animation: pulse 1.5s infinite;
+        }
+
+        #status.processing {
+            background: rgba(255, 152, 0, 0.25);
+        }
+
+        #status.speaking {
+            background: rgba(156, 39, 176, 0.25);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0.7
+            }
+        }
+
+        .btn-container {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        #recordBtn {
+            padding: 22px 55px;
+            font-size: 1.3em;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 8px 25px rgba(17, 153, 142, 0.4);
+            transition: all 0.3s;
+        }
+
+        #recordBtn:hover {
+            transform: scale(1.05);
+        }
+
+        #recordBtn.recording {
+            background: linear-gradient(135deg, #ff416c, #ff4b2b);
+            box-shadow: 0 8px 25px rgba(255, 65, 108, 0.4);
+        }
+
+        .transcript-box {
+            background: rgba(0, 0, 0, 0.25);
+            padding: 20px;
+            border-radius: 12px;
+            min-height: 120px;
+            margin-bottom: 15px;
+        }
+
+        .user-msg {
+            color: #64b5f6;
+            margin-bottom: 10px;
+        }
+
+        .krishna-msg {
+            color: #ce93d8;
+        }
+
+        #metrics {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 0.85em;
+        }
+
+        .metric {
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #4caf50;
+        }
+
+        #log {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Consolas', monospace;
+            font-size: 11px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .log-ok {
+            color: #4caf50;
+        }
+
+        .log-err {
+            color: #f44336;
+        }
+
+        .log-warn {
+            color: #ff9800;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🕉️ Krishna</h1>
+        <div class="subtitle">Real-Time Voice Assistant with Gita Wisdom</div>
+
+        <div id="status">Click to start recording</div>
+
+        <div style="margin-bottom:15px;">
+            <label style="display:block;margin-bottom:5px;opacity:0.8;">🎤 Microphone:</label>
+            <select id="deviceSelect"
+                style="width:100%;padding:10px;border-radius:8px;background:#2a2a4e;color:white;border:1px solid rgba(255,255,255,0.2);">
+                <option value="">Loading devices...</option>
+            </select>
+        </div>
+
+        <div class="btn-container">
+            <button id="recordBtn">🎤 START RECORDING</button>
+        </div>
+
+        <div class="transcript-box">
+            <div id="userText" class="user-msg"></div>
+            <div id="krishnaText" class="krishna-msg"></div>
+        </div>
+
+        <div id="metrics">
+            <div class="metric">
+                <div>Chunks</div>
+                <div class="metric-value" id="chunkCount">0</div>
+            </div>
+            <div class="metric">
+                <div>RMS</div>
+                <div class="metric-value" id="rmsValue">-</div>
+            </div>
+            <div class="metric">
+                <div>WS</div>
+                <div class="metric-value" id="wsStatus">-</div>
+            </div>
+        </div>
+
+        <div id="log"></div>
+    </div>
+
+    <script>
+        // ============================================================
+        // KRISHNA VOICE ASSISTANT - 100% INLINE (NO EXTERNAL FILES)
+        // Version: FINAL-FIX-v1
+        // ============================================================
+
+        // === STATE ===
+        let ws = null;
+        let recording = false;
+        let audioCtx = null;
+        let mediaStream = null;
+        let processor = null;
+        let source = null;
+        let chunks = 0;
+        let lastRMS = 0;
+
+        // === TTS PLAYBACK STATE ===
+        let playbackCtx = null;
+        let audioQueue = [];
+        let isPlaying = false;
+
+        // === UI ELEMENTS ===
+        const statusEl = document.getElementById('status');
+        const recordBtn = document.getElementById('recordBtn');
+        const userTextEl = document.getElementById('userText');
+        const krishnaTextEl = document.getElementById('krishnaText');
+        const chunkCountEl = document.getElementById('chunkCount');
+        const rmsValueEl = document.getElementById('rmsValue');
+        const wsStatusEl = document.getElementById('wsStatus');
+        const logEl = document.getElementById('log');
+
+        // === LOGGING ===
+        function log(msg, type = '') {
+            console.log(msg);
+            const div = document.createElement('div');
+            div.className = type ? 'log-' + type : '';
+            div.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+            logEl.appendChild(div);
+            logEl.scrollTop = logEl.scrollHeight;
+            if (logEl.children.length > 50) logEl.removeChild(logEl.children[0]);
+        }
+
+        // === WEBSOCKET ===
+        async function connectWS() {
+            return new Promise((resolve, reject) => {
+                log('Connecting to WebSocket...');
+                wsStatusEl.textContent = '...';
+                wsStatusEl.style.color = '#ff9800';
+
+                // Auto-detect WebSocket URL for cloud deployment
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const host = window.location.host || 'localhost:8765';
+                const wsUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                    ? 'ws://localhost:8765'
+                    : `${protocol}//${host}/ws`;
+                
+                log('Connecting to: ' + wsUrl);
+                ws = new WebSocket(wsUrl);
+
+                ws.onopen = () => {
+                    log('Connected to server!', 'ok');
+                    wsStatusEl.textContent = 'OK';
+                    wsStatusEl.style.color = '#4caf50';
+                    statusEl.textContent = 'Connected - Ready to record';
+                    resolve();
+                };
+
+                ws.onerror = (e) => {
+                    log('WebSocket error!', 'err');
+                    wsStatusEl.textContent = 'ERR';
+                    wsStatusEl.style.color = '#f44336';
+                    reject(e);
+                };
+
+                ws.onclose = () => {
+                    log('WebSocket closed', 'warn');
+                    wsStatusEl.textContent = 'X';
+                    wsStatusEl.style.color = '#f44336';
+                };
+
+                ws.onmessage = handleMessage;
+
+                setTimeout(() => reject(new Error('Connection timeout')), 5000);
+            });
+        }
+
+        function handleMessage(event) {
+            try {
+                const data = JSON.parse(event.data);
+
+                switch (data.type) {
+                    case 'transcript_partial':
+                        userTextEl.textContent = '🎤 ' + data.text;
+                        statusEl.textContent = 'Heard: ' + data.text;
+                        break;
+
+                    case 'transcript_final':
+                        userTextEl.textContent = '🎤 You: ' + data.text;
+                        log('Transcript: ' + data.text, 'ok');
+                        break;
+
+                    case 'llm_token':
+                        krishnaTextEl.textContent = (krishnaTextEl.textContent || '🕉️ Krishna: ') + data.token;
+                        break;
+
+                    case 'audio_chunk':
+                        playPCMAudio(data.audio);
+                        break;
+
+                    case 'state':
+                        if (data.status === 'processing') {
+                            statusEl.textContent = 'Krishna is thinking...';
+                            statusEl.className = 'processing';
+                        } else if (data.status === 'speaking') {
+                            statusEl.textContent = 'Krishna is speaking...';
+                            statusEl.className = 'speaking';
+                        } else if (data.status === 'success') {
+                            statusEl.textContent = 'Ready';
+                            statusEl.className = '';
+                        }
+                        break;
+
+                    case 'response_complete':
+                        log('Response complete', 'ok');
+                        statusEl.textContent = 'Ready';
+                        statusEl.className = '';
+                        break;
+                }
+            } catch (e) {
+                log('Message error: ' + e.message, 'err');
+            }
+        }
+
+        // === TTS AUDIO PLAYBACK ===
+        let leftoverBytes = null;  // Buffer for leftover bytes
+
+        function playPCMAudio(base64Data) {
+            // Decode base64 to bytes
+            const binary = atob(base64Data);
+            let bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+
+            // Combine with leftover bytes from previous chunk
+            if (leftoverBytes && leftoverBytes.length > 0) {
+                const combined = new Uint8Array(leftoverBytes.length + bytes.length);
+                combined.set(leftoverBytes);
+                combined.set(bytes, leftoverBytes.length);
+                bytes = combined;
+                leftoverBytes = null;
+            }
+
+            // Ensure even byte count (Int16 needs 2 bytes per sample)
+            if (bytes.length % 2 !== 0) {
+                leftoverBytes = new Uint8Array([bytes[bytes.length - 1]]);
+                bytes = bytes.slice(0, bytes.length - 1);
+            }
+
+            // Queue the audio
+            if (bytes.length > 0) {
+                audioQueue.push(bytes);
+
+                if (!isPlaying) {
+                    playNextChunk();
+                }
+            }
+        }
+
+        async function playNextChunk() {
+            if (audioQueue.length === 0) {
+                isPlaying = false;
+                return;
+            }
+
+            isPlaying = true;
+
+            // Collect multiple chunks for smoother playback
+            let totalBytes = [];
+            while (audioQueue.length > 0 && totalBytes.length < 32000) {  // ~1 second buffer
+                const chunk = audioQueue.shift();
+                for (let i = 0; i < chunk.length; i++) {
+                    totalBytes.push(chunk[i]);
+                }
+            }
+
+            const bytes = new Uint8Array(totalBytes);
+            if (bytes.length === 0) {
+                isPlaying = false;
+                return;
+            }
+
+            try {
+                if (!playbackCtx) {
+                    playbackCtx = new AudioContext({ sampleRate: 16000 });
+                }
+
+                if (playbackCtx.state === 'suspended') {
+                    await playbackCtx.resume();
+                }
+
+                // Convert PCM16 to Float32
+                const pcm16 = new Int16Array(bytes.buffer);
+                const float32 = new Float32Array(pcm16.length);
+                for (let i = 0; i < pcm16.length; i++) {
+                    float32[i] = pcm16[i] / 32768.0;
+                }
+
+                // Create and play buffer
+                const buffer = playbackCtx.createBuffer(1, float32.length, 16000);
+                buffer.getChannelData(0).set(float32);
+
+                const source = playbackCtx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(playbackCtx.destination);
+                source.onended = playNextChunk;
+                source.start();
+
+            } catch (e) {
+                log('Audio playback error: ' + e.message, 'err');
+                setTimeout(playNextChunk, 100);
+            }
+        }
+        // === RECORDING ===
+        async function startRecording() {
+            log('Starting recording...');
+            chunks = 0;
+            krishnaTextEl.textContent = '';
+            userTextEl.textContent = '';
+
+            // Connect if needed
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                try {
+                    await connectWS();
+                } catch (e) {
+                    statusEl.textContent = 'Server not running!';
+                    log('Cannot connect to server', 'err');
+                    return;
+                }
+            }
+
+            try {
+                // Get microphone
+                log('Requesting microphone...');
+                const selectedDevice = document.getElementById('deviceSelect').value;
+                log('Using device: ' + selectedDevice.substring(0, 20) + '...');
+
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        deviceId: selectedDevice ? { exact: selectedDevice } : undefined,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
+                const track = mediaStream.getAudioTracks()[0];
+                log('Using: ' + track.label, 'ok');
+
+                // Create audio context (let browser choose sample rate)
+                audioCtx = new AudioContext();
+                const sampleRate = audioCtx.sampleRate;
+                log('AudioContext: ' + sampleRate + 'Hz');
+
+                // Resume if suspended
+                if (audioCtx.state === 'suspended') {
+                    await audioCtx.resume();
+                }
+
+                // Create nodes
+                source = audioCtx.createMediaStreamSource(mediaStream);
+                processor = audioCtx.createScriptProcessor(4096, 1, 1);
+
+                const targetRate = 16000;
+                const ratio = sampleRate / targetRate;
+
+                processor.onaudioprocess = function (e) {
+                    if (!recording) return;
+                    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+                    const input = e.inputBuffer.getChannelData(0);
+
+                    // Downsample to 16kHz
+                    const outLen = Math.floor(input.length / ratio);
+                    const resampled = new Float32Array(outLen);
+                    for (let i = 0; i < outLen; i++) {
+                        resampled[i] = input[Math.floor(i * ratio)];
+                    }
+
+                    // Convert to Int16 PCM and calculate RMS
+                    const pcm = new Int16Array(outLen);
+                    let sumSq = 0;
+                    for (let i = 0; i < outLen; i++) {
+                        const s = Math.max(-1, Math.min(1, resampled[i]));
+                        pcm[i] = s < 0 ? s * 32768 : s * 32767;
+                        sumSq += s * s;
+                    }
+
+                    const rms = Math.sqrt(sumSq / outLen);
+                    lastRMS = rms;
+
+                    // Convert to base64 - CORRECT METHOD (no spread operator!)
+                    const bytes = new Uint8Array(pcm.buffer);
+                    let binary = '';
+                    for (let i = 0; i < bytes.length; i++) {
+                        binary += String.fromCharCode(bytes[i]);
+                    }
+                    const base64 = btoa(binary);
+
+                    // Send
+                    ws.send(JSON.stringify({ type: 'audio_chunk', audio: base64 }));
+
+                    chunks++;
+                    chunkCountEl.textContent = chunks;
+                    rmsValueEl.textContent = rms.toFixed(4);
+
+                    if (chunks === 1) {
+                        log('First audio chunk sent!', 'ok');
+                    } else if (chunks % 20 === 0) {
+                        log('Chunks: ' + chunks + ', RMS: ' + rms.toFixed(4));
+                    }
+                };
+
+                source.connect(processor);
+                processor.connect(audioCtx.destination);
+
+                recording = true;
+                recordBtn.textContent = '🛑 STOP RECORDING';
+                recordBtn.classList.add('recording');
+                statusEl.textContent = 'Recording... Speak now!';
+                statusEl.className = 'listening';
+
+                log('Recording started!', 'ok');
+
+            } catch (e) {
+                log('Microphone error: ' + e.message, 'err');
+                statusEl.textContent = 'Microphone error: ' + e.message;
+            }
+        }
+
+        function stopRecording() {
+            log('Stopping recording...');
+            recording = false;
+
+            recordBtn.textContent = '🎤 START RECORDING';
+            recordBtn.classList.remove('recording');
+            statusEl.textContent = 'Processing...';
+            statusEl.className = 'processing';
+
+            // Cleanup
+            if (processor) { processor.disconnect(); processor = null; }
+            if (source) { source.disconnect(); source = null; }
+            if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+            if (audioCtx) { audioCtx.close(); audioCtx = null; }
+
+            // Send end signal
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'end_of_speech' }));
+            }
+
+            log('Stopped. Chunks sent: ' + chunks + ', Last RMS: ' + lastRMS.toFixed(4), 'ok');
+        }
+
+        // === BUTTON HANDLER ===
+        recordBtn.addEventListener('click', async () => {
+            if (recording) {
+                stopRecording();
+            } else {
+                await startRecording();
+            }
+        });
+
+        // === DEVICE ENUMERATION ===
+        async function loadDevices() {
+            try {
+                // Need permission first to get labels
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const audioInputs = devices.filter(d => d.kind === 'audioinput');
+
+                const select = document.getElementById('deviceSelect');
+                select.innerHTML = '';
+
+                audioInputs.forEach((device, i) => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.textContent = device.label || `Microphone ${i + 1}`;
+                    select.appendChild(option);
+                });
+
+                log('Found ' + audioInputs.length + ' microphone(s)', 'ok');
+            } catch (e) {
+                log('Device enumeration error: ' + e.message, 'err');
+            }
+        }
+
+        // === INIT ===
+        window.onload = () => {
+            log('Krishna Voice Assistant ready');
+            loadDevices();
+            log('Select your microphone and click START');
+        };
+    </script>
+</body>
+
+</html>
