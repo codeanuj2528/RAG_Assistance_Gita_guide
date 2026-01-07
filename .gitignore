@@ -9,7 +9,7 @@ env/
 .venv/
 ENV/
 
-# Environment
+# Environment (contains secrets!)
 .env
 .env.local
 *.env
@@ -24,11 +24,11 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Chroma DB (will rebuild on deploy)
-chroma_db/
-
 # Logs
 *.log
 
 # Byte-compiled
 *.pyc
+
+# Note: chroma_db/ is NOT ignored - it contains pre-built embeddings
+# This speeds up deployment as embeddings don't need to be rebuilt
