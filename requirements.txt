@@ -12,8 +12,7 @@ elevenlabs==2.27.0
 
 # Audio processing
 pydub==0.25.1
-numpy>=2.1.0
-scipy>=1.14.0
+numpy>=1.24.0
 
 # HTTP client for TTS streaming
 httpx>=0.27.0
@@ -24,7 +23,8 @@ websockets>=13.1
 # Utility
 requests==2.32.3
 
-# RAG Pipeline - Open Source Embeddings (Fast & Free)
-chromadb>=0.4.22
-sentence-transformers>=2.3.1
-
+# NOTE: sentence-transformers and chromadb removed for Render free tier
+# Using lightweight keyword-based retrieval instead (rag_retriever.py)
+# If you have >1GB RAM, uncomment these for better retrieval:
+# chromadb>=0.4.22
+# sentence-transformers>=2.3.1

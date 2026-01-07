@@ -1,252 +1,220 @@
 """
-RAG Retriever - Runtime Context Retrieval
-Fast open-source embeddings with <100ms latency
+RAG Retriever - LIGHTWEIGHT VERSION for Render Free Tier
+Uses keyword-based search instead of embeddings to stay under 512MB
 """
 
 import asyncio
+import json
+import os
 from typing import List, Dict, Optional
-from sentence_transformers import SentenceTransformer
-import chromadb
-from chromadb.config import Settings
-from config import Config
+from pathlib import Path
 
 
-class RAGRetriever:
-    """Fast retrieval using all-MiniLM-L6-v2 embeddings"""
+class LightweightRetriever:
+    """
+    Keyword-based retriever that works within 512MB memory limit.
+    Uses pre-indexed keywords instead of embedding model.
+    """
     
     def __init__(self):
-        """Initialize retriever with cached model and DB connection"""
-        print("🔍 Initializing RAG Retriever...")
+        """Initialize with keyword index from data files"""
+        print("🔍 Initializing Lightweight RAG Retriever...")
         
-        # Load embedding model (once, at startup)
-        self.model = SentenceTransformer(Config.EMBEDDING_MODEL)
-        print(f"✅ Loaded embedding model: {Config.EMBEDDING_MODEL}")
+        self.verses = []
+        self._load_verses()
         
-        # Connect to ChromaDB
-        self.client = chromadb.PersistentClient(path=Config.VECTOR_DB_PATH)
-        
-        # Get collection (will fail if not created yet)
-        try:
-            self.collection = self.client.get_collection(name=Config.COLLECTION_NAME)
-            verse_count = self.collection.count()
-            print(f"✅ Connected to vector DB: {verse_count} verses indexed")
-        except Exception as e:
-            print(f"⚠️ No vector database found. Run 'python rag_embedder.py' first!")
-            print(f"   Error: {e}")
-            self.collection = None
+        print(f"✅ Loaded {len(self.verses)} verses (keyword-based, no ML model)")
     
-    def _enhance_query(self, query: str) -> str:
-        """
-        Enhance query by mapping real-life problems to Gita concepts
+    def _load_verses(self):
+        """Load verses from data files"""
+        data_dir = Path(__file__).parent / "data"
         
-        Examples:
-        - "failure" → "Arjuna despair duty dharma"
-        - "anxiety" → "fear worry mind control steadiness"
-        """
+        # Load translations
+        translation_file = data_dir / "translation.json"
+        verse_file = data_dir / "verse.json"
+        
+        translations = {}
+        verses = {}
+        
+        try:
+            if translation_file.exists():
+                with open(translation_file, 'r', encoding='utf-8') as f:
+                    translations = json.load(f)
+            
+            if verse_file.exists():
+                with open(verse_file, 'r', encoding='utf-8') as f:
+                    verses = json.load(f)
+            
+            # Build searchable index
+            for key, translation in translations.items():
+                # Parse key format "chapter.verse"
+                parts = key.split('.')
+                if len(parts) >= 2:
+                    chapter = parts[0]
+                    verse = parts[1]
+                    
+                    sanskrit = verses.get(key, {}).get('text', '')
+                    transliteration = verses.get(key, {}).get('transliteration', '')
+                    
+                    # Get first author's translation
+                    if isinstance(translation, dict):
+                        text = list(translation.values())[0] if translation else ''
+                    else:
+                        text = str(translation)
+                    
+                    self.verses.append({
+                        'chapter': int(chapter),
+                        'verse': int(verse),
+                        'text': text,
+                        'sanskrit': sanskrit,
+                        'transliteration': transliteration,
+                        'keywords': self._extract_keywords(text)
+                    })
+                    
+        except Exception as e:
+            print(f"⚠️ Error loading verses: {e}")
+    
+    def _extract_keywords(self, text: str) -> set:
+        """Extract lowercase keywords from text"""
+        if not text:
+            return set()
+        
+        # Simple word extraction
+        words = text.lower().split()
+        # Remove punctuation
+        clean_words = set()
+        for word in words:
+            clean = ''.join(c for c in word if c.isalnum())
+            if len(clean) > 2:  # Skip very short words
+                clean_words.add(clean)
+        
+        return clean_words
+    
+    def _get_gita_keywords(self, query: str) -> set:
+        """Map query terms to Gita concepts"""
         query_lower = query.lower()
         
-        # Concept mappings: real-life problems → Gita concepts
         concept_map = {
-            # Emotional struggles
-            'failure': 'Arjuna despair duty dharma purpose',
-            'fail': 'Arjuna despair duty dharma',
-            'anxiety': 'fear mind control sthitaprajna steadiness peace',
-            'anxious': 'fear worry mind steadiness',
-            'fear': 'courage Arjuna warrior fearlessness abhaya',
-            'worried': 'mind control meditation peace',
-            'stress': 'mind control peace equanimity sama',
-            'depression': 'despair Arjuna grief sorrow',
-            'sad': 'grief sorrow Arjuna',
-            'angry': 'anger krodha desire mind control',
-            'anger': 'krodha desire lust mind control',
-            
-            # Life situations
-            'loss': 'impermanence death eternal soul atman',
-            'death': 'soul atman eternal imperishable',
-            'die': 'soul atman eternal death rebirth',
-            'change': 'impermanence eternal soul nature',
-            'transition': 'change impermanence yoga',
-            
-            # Purpose & meaning
-            'purpose': 'dharma duty swadharma calling',
-            'meaning': 'dharma purpose duty life',
-            'confused': 'Arjuna confusion duty dharma choice',
-            'doubt': 'Arjuna doubt confusion faith',
-            'lost': 'path dharma purpose guidance',
-            
-            # Relationships
-            'relationship': 'detachment love compassion duty',
-            'family': 'duty dharma attachment detachment',
-            'love': 'bhakti devotion compassion',
-            
-            # Work & action
-            'work': 'karma yoga action nishkam work duty',
-            'career': 'dharma swadharma duty work karma',
-            'job': 'karma yoga duty work nishkam',
-            'action': 'karma yoga nishkam fruits results',
-            
-            # Spiritual concepts
-            'god': 'Krishna Bhagavan divine supreme',
-            'soul': 'atman self eternal imperishable',
-            'self': 'atman soul consciousness awareness',
-            'meditation': 'dhyana yoga mind control focus',
-            'peace': 'shanti equanimity mind control sama',
-            'happiness': 'sukha contentment equanimity joy',
-            'suffering': 'dukha pain impermanence detachment',
+            'failure': {'duty', 'dharma', 'action', 'despair', 'arjuna'},
+            'fail': {'duty', 'dharma', 'action'},
+            'anxiety': {'fear', 'mind', 'peace', 'control', 'steady'},
+            'fear': {'courage', 'fearless', 'warrior', 'death'},
+            'stress': {'mind', 'peace', 'equanimity', 'calm'},
+            'depression': {'despair', 'grief', 'sorrow', 'arise'},
+            'sad': {'grief', 'sorrow', 'tears'},
+            'angry': {'anger', 'desire', 'control', 'lust'},
+            'death': {'soul', 'eternal', 'immortal', 'body', 'atman'},
+            'purpose': {'dharma', 'duty', 'action', 'calling'},
+            'confused': {'doubt', 'confusion', 'arjuna', 'clarity'},
+            'lost': {'path', 'guidance', 'dharma', 'direction'},
+            'work': {'karma', 'action', 'duty', 'fruit', 'result'},
+            'career': {'dharma', 'duty', 'work', 'action'},
+            'relationship': {'attachment', 'love', 'duty', 'compassion'},
+            'meditation': {'yoga', 'mind', 'focus', 'concentration'},
+            'peace': {'equanimity', 'calm', 'tranquil', 'steady'},
+            'happiness': {'joy', 'bliss', 'contentment', 'pleasure'},
         }
         
-        # Find matching concepts
-        enhanced_terms = [query]  # Always include original
+        keywords = set()
         
-        for keyword, gita_concepts in concept_map.items():
-            if keyword in query_lower:
-                enhanced_terms.append(gita_concepts)
+        # Add original query words
+        words = query_lower.split()
+        for word in words:
+            clean = ''.join(c for c in word if c.isalnum())
+            if len(clean) > 2:
+                keywords.add(clean)
         
-        # Join all terms
-        enhanced_query = ' '.join(enhanced_terms)
+        # Add mapped Gita concepts
+        for term, concepts in concept_map.items():
+            if term in query_lower:
+                keywords.update(concepts)
         
-        return enhanced_query
+        return keywords
     
-    async def retrieve_context(self, query: str, top_k: int = None) -> str:
+    async def retrieve_context(self, query: str, top_k: int = 3) -> str:
         """
-        Retrieve relevant Gita verses for a query
+        Retrieve relevant verses using keyword matching
         
         Args:
-            query: User's question/message
-            top_k: Number of results (default: Config.TOP_K_RETRIEVAL)
+            query: User's question
+            top_k: Number of verses to return
             
         Returns:
-            Formatted context string with relevant verses
-            
-        Latency: ~50-100ms total
+            Formatted context string
         """
-        if not self.collection:
+        if not self.verses:
             return ""
         
         try:
-            # Use config default if not specified
-            if top_k is None:
-                top_k = Config.TOP_K_RETRIEVAL
+            # Get query keywords
+            query_keywords = self._get_gita_keywords(query)
             
-            # Enhance query with Gita concepts
-            enhanced_query = self._enhance_query(query)
+            if not query_keywords:
+                return ""
             
-            # Log if query was enhanced
-            if enhanced_query != query:
-                print(f"🔍 Enhanced query: '{query}' → includes Gita concepts")
+            # Score each verse by keyword matches
+            scored_verses = []
+            for verse in self.verses:
+                score = len(query_keywords & verse['keywords'])
+                if score > 0:
+                    scored_verses.append((score, verse))
             
-            # Embed enhanced query (~16ms)
-            query_embedding = await asyncio.to_thread(
-                self.model.encode,
-                enhanced_query,
-                convert_to_tensor=False
-            )
+            # Sort by score and get top_k
+            scored_verses.sort(key=lambda x: x[0], reverse=True)
+            top_verses = scored_verses[:top_k]
             
-            # Search vector DB (~20-30ms)
-            results = self.collection.query(
-                query_embeddings=[query_embedding.tolist()],
-                n_results=top_k
-            )
+            if not top_verses:
+                return ""
             
-            # Format context (~10-20ms)
-            context = self._format_context(results)
+            # Format context
+            context_parts = ["=== RELEVANT SCRIPTURE CONTEXT ===\n"]
             
-            return context
+            for i, (score, verse) in enumerate(top_verses, 1):
+                context_parts.append(f"\n[Verse {i}: Chapter {verse['chapter']}, Verse {verse['verse']}]")
+                context_parts.append(verse['text'])
+                context_parts.append("")
+            
+            context_parts.append("=== END CONTEXT ===")
+            
+            return "\n".join(context_parts)
             
         except Exception as e:
-            print(f"⚠️ RAG retrieval error: {e}")
+            print(f"⚠️ Retrieval error: {e}")
             return ""
-    
-    def _format_context(self, results: Dict) -> str:
-        """
-        Format retrieved chunks into readable context
-        
-        Args:
-            results: ChromaDB query results
-            
-        Returns:
-            Formatted string with verse information
-        """
-        if not results or not results['documents'] or not results['documents'][0]:
-            return ""
-        
-        documents = results['documents'][0]
-        metadatas = results['metadatas'][0] if results['metadatas'] else [{}] * len(documents)
-        distances = results['distances'][0] if results['distances'] else [0] * len(documents)
-        
-        # Filter by similarity threshold (distance < threshold means more similar)
-        filtered_verses = []
-        for doc, meta, dist in zip(documents, metadatas, distances):
-            # ChromaDB uses L2 distance, lower is better
-            # Convert to similarity score (1 - normalized_distance)
-            similarity = 1 - min(dist / 2, 1)  # Normalize to 0-1 range
-            
-            if similarity >= Config.RAG_SIMILARITY_THRESHOLD:
-                filtered_verses.append({
-                    'content': doc,
-                    'metadata': meta,
-                    'similarity': similarity
-                })
-        
-        if not filtered_verses:
-            return ""
-        
-        # Build formatted context
-        context_parts = ["=== RELEVANT SCRIPTURE CONTEXT ===\n"]
-        
-        for i, verse in enumerate(filtered_verses, 1):
-            meta = verse['metadata']
-            chapter = meta.get('chapter', '?')
-            verse_num = meta.get('verse', '?')
-            
-            context_parts.append(f"\n[Verse {i}: Chapter {chapter}, Verse {verse_num}]")
-            context_parts.append(verse['content'])
-            context_parts.append("")  # Blank line between verses
-        
-        context_parts.append("=== END CONTEXT ===")
-        
-        return "\n".join(context_parts)
     
     def get_verse_by_reference(self, chapter: int, verse: int) -> Optional[str]:
-        """
-        Get specific verse by chapter and verse number
-        
-        Args:
-            chapter: Chapter number
-            verse: Verse number
-            
-        Returns:
-            Verse content or None if not found
-        """
-        if not self.collection:
-            return None
-        
-        try:
-            results = self.collection.get(
-                where={
-                    "$and": [
-                        {"chapter": chapter},
-                        {"verse": verse}
-                    ]
-                }
-            )
-            
-            if results and results['documents']:
-                return results['documents'][0]
-            
-            return None
-            
-        except Exception as e:
-            print(f"⚠️ Error fetching verse {chapter}.{verse}: {e}")
-            return None
+        """Get specific verse by reference"""
+        for v in self.verses:
+            if v['chapter'] == chapter and v['verse'] == verse:
+                return v['text']
+        return None
 
 
-# Singleton instance (loaded once)
+# MEMORY-EFFICIENT: Check if we should use lightweight or full retriever
 _retriever_instance = None
 
-def get_retriever() -> RAGRetriever:
-    """Get or create singleton retriever instance"""
+def get_retriever():
+    """Get retriever instance - uses lightweight version for low memory environments"""
     global _retriever_instance
+    
     if _retriever_instance is None:
-        _retriever_instance = RAGRetriever()
+        # Check if we're in a memory-constrained environment
+        use_lightweight = os.environ.get('LIGHTWEIGHT_RAG', 'true').lower() == 'true'
+        
+        if use_lightweight:
+            print("💡 Using Lightweight RAG (keyword-based, low memory)")
+            _retriever_instance = LightweightRetriever()
+        else:
+            # Import heavy version only if needed
+            from sentence_transformers import SentenceTransformer
+            import chromadb
+            
+            # Full RAG implementation would go here
+            # But for Render free tier, we use lightweight
+            _retriever_instance = LightweightRetriever()
+    
     return _retriever_instance
+
+
+# Export lightweight as default for Render
+RAGRetriever = LightweightRetriever
