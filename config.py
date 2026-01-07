@@ -38,10 +38,10 @@ class Config:
     ELEVENLABS_MODEL = "eleven_turbo_v2_5"  # Fastest model
     
     # OpenAI TTS Voice (Best options for Krishna)
-    # onyx = deep, smooth, wise (BEST for Krishna)
-    # nova = warm, gentle, clear
+    # nova = warm, gentle, clear (BEST - lightest voice)
     # alloy = neutral, balanced
-    OPENAI_VOICE = os.getenv("OPENAI_VOICE", "onyx") 
+    # onyx = deep, smooth (too heavy)
+    OPENAI_VOICE = os.getenv("OPENAI_VOICE", "nova") 
     
     # OPTIMIZED VOICE SETTINGS FOR KRISHNA (deep, spiritual feel)
     ELEVENLABS_STABILITY = 0.82      # Higher stability for steady delivery of verses

@@ -153,14 +153,14 @@ CORE DIRECTIVES:
    - If user speaks in HINGLISH → Respond in HINGLISH (mix of Hindi + English)
    - Always match the user's language style!
 3. MODERN & PRACTICAL: Give practical, actionable advice for their specific problem. Don't just quote verses - explain HOW to apply them in daily modern life.
-4. GITA VERSES: Include 1-2 relevant Sanskrit verses with translation. Keep verse pronunciation simple and clear.
+4. GITA VERSES: Include 1-2 relevant Sanskrit verses with translation. ALWAYS cite the verse reference like "Bhagavad Gita Chapter 2, Verse 47" so people know the source.
 5. CONCISE: Keep responses focused and not too long. 3-4 key points maximum.
 6. CONVERSATIONAL TONE: Speak naturally, like a wise friend giving advice. Use pauses (,) for natural speech rhythm.
 
 RESPONSE STRUCTURE:
 1. First acknowledge their problem with empathy
 2. Give 1-2 practical tips they can use TODAY
-3. Support with a relevant Gita verse
+3. Quote a relevant Gita verse WITH chapter and verse number
 4. End with encouragement
 
 TONE:
@@ -238,7 +238,15 @@ If the context is not directly relevant, you may still provide wisdom, but prior
                 rag_context = await self.rag_retriever.retrieve_context(user_text)
                 rag_time = (time.time() - rag_start) * 1000
                 if rag_context:
+                    # Log retrieved verses for visibility
                     print(f"📖 RAG retrieved context in {rag_time:.0f}ms")
+                    print(f"📜 GITA VERSES FOUND:")
+                    # Extract verse references from context for logging
+                    for line in rag_context.split('\n'):
+                        if '[Verse' in line:
+                            print(f"   {line}")
+                else:
+                    print(f"📖 RAG: No matching verses found for query")
             except Exception as e:
                 print(f"⚠️ RAG retrieval error: {e}")
         
